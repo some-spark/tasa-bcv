@@ -1,0 +1,45 @@
+name: Actualizar tasa BCV
+
+on:
+  schedule:
+    # 16:30 VET = 20:30 UTC (Venezuela es UTC-4 todo el año)
+    - cron: '30 20 * * 1-5'  # Lun-Vie a las 20:30 UTC
+  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub
+
+permissions:
+  contents: write  # Necesario para hacer commit y push
+
+jobs:
+  actualizar-tasa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Ejecutar scraper
+        run: python3 obtener_tasa.py
+
+      - name: Commit y push si hay cambios
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tasa.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: actualiza tasa BCV $(date -u +'%Y-%m-%d')"
+            git push
+          else
+            echo "Sin cambios en tasa.json"
+          fi
